@@ -10,9 +10,17 @@ const int brbLedPin = 10;         // LED for "BRB" scene
 
 // Button states
 int lastRecordButtonState = HIGH;
-int sfxButtonReady = true;
-int muteButtonReady = true;
-int sceneButtonReady = true;
+int lastSfxButtonState = HIGH;
+int lastMuteButtonState = HIGH;
+int lastSceneButtonState = HIGH;
+
+// Debounce timestamps
+unsigned long lastRecordDebounceTime = 0;
+unsigned long lastSfxDebounceTime = 0;
+unsigned long lastMuteDebounceTime = 0;
+unsigned long lastSceneDebounceTime = 0;
+
+const unsigned long debounceDelay = 500; // 500ms debounce delay
 
 void setup() {
   pinMode(recordButtonPin, INPUT_PULLUP);
@@ -41,43 +49,39 @@ void loop() {
 
   // --- Record button (pin 8) ---
   if (lastRecordButtonState == HIGH && currentRecordButtonState == LOW) {
-    Serial.println("BTN-RECORD");
-    delay(1000);
+    if ((millis() - lastRecordDebounceTime) > debounceDelay) {
+      Serial.println("BTN-RECORD");
+      lastRecordDebounceTime = millis();
+    }
   }
   lastRecordButtonState = currentRecordButtonState;
 
   // --- SFX button (pin 7) ---
-  if (currentSfxButtonState == LOW) {
-    if (sfxButtonReady) {
-      sfxButtonReady = false;
+  if (lastSfxButtonState == HIGH && currentSfxButtonState == LOW) {
+    if ((millis() - lastSfxDebounceTime) > debounceDelay) {
       Serial.println("BTN-SFX");
-      delay(50);
+      lastSfxDebounceTime = millis();
     }
-  } else {
-    sfxButtonReady = true;
   }
+  lastSfxButtonState = currentSfxButtonState;
 
   // --- Mute button (pin 6) ---
-  if (currentMuteButtonState == LOW) {
-    if (muteButtonReady) {
-      muteButtonReady = false;
+  if (lastMuteButtonState == HIGH && currentMuteButtonState == LOW) {
+    if ((millis() - lastMuteDebounceTime) > debounceDelay) {
       Serial.println("BTN-MUTE");
-      delay(500);
+      lastMuteDebounceTime = millis();
     }
-  } else {
-    muteButtonReady = true;
   }
+  lastMuteButtonState = currentMuteButtonState;
 
   // --- Scene toggle button (pin 5) ---
-  if (currentSceneButtonState == LOW) {
-    if (sceneButtonReady) {
-      sceneButtonReady = false;
+  if (lastSceneButtonState == HIGH && currentSceneButtonState == LOW) {
+    if ((millis() - lastSceneDebounceTime) > debounceDelay) {
       Serial.println("BTN-SCENE");
-      delay(500);
+      lastSceneDebounceTime = millis();
     }
-  } else {
-    sceneButtonReady = true;
   }
+  lastSceneButtonState = currentSceneButtonState;
 
   // --- Handle incoming LED commands from PC ---
   if (Serial.available() > 0) {
@@ -87,10 +91,10 @@ void loop() {
       digitalWrite(recordLedPin, HIGH);
     } else if (c == '0') {       // Recording OFF
       digitalWrite(recordLedPin, LOW);
-    } else if (c == '2') {       // Mute ON
-      digitalWrite(muteLedPin, HIGH);
-    } else if (c == '3') {       // Mute OFF
+    } else if (c == '2') {       // Mute OFF
       digitalWrite(muteLedPin, LOW);
+    } else if (c == '3') {       // Mute ON
+      digitalWrite(muteLedPin, HIGH);
     } else if (c == '4') {       // Scene = General
       digitalWrite(generalLedPin, HIGH);
       digitalWrite(brbLedPin, LOW);
