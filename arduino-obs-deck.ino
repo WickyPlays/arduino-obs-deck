@@ -2,6 +2,7 @@ const int recordButtonPin = 8;    // Record button
 const int sfxButtonPin = 7;       // SFX button
 const int muteButtonPin = 6;      // Mute button
 const int sceneButtonPin = 5;     // Scene toggle button
+const int potPin = A0;            // Potentiometer
 
 const int recordLedPin = 13;      // LED for recording
 const int muteLedPin = 12;        // LED for mute
@@ -20,7 +21,14 @@ unsigned long lastSfxDebounceTime = 0;
 unsigned long lastMuteDebounceTime = 0;
 unsigned long lastSceneDebounceTime = 0;
 
-const unsigned long debounceDelay = 500; // 500ms debounce delay
+const unsigned long debounceDelay = 250; // 250ms debounce delay
+
+// Track potentiometer
+float lastVoltage = -1;
+
+float floatMap(float x, float in_min, float in_max, float out_min, float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
 void setup() {
   pinMode(recordButtonPin, INPUT_PULLUP);
@@ -82,6 +90,16 @@ void loop() {
     }
   }
   lastSceneButtonState = currentSceneButtonState;
+
+  // --- Potentiometer on A0 ---
+  int analogValue = analogRead(potPin);   // 0–1023
+  float voltage = floatMap(analogValue, 0, 1023, 0, 5);
+  // only send when changed significantly
+  if (abs(voltage - lastVoltage) > 0.02) {
+    Serial.print("VOL:");
+    Serial.println(voltage, 2); // 2 decimals
+    lastVoltage = voltage;
+  }
 
   // --- Handle incoming LED commands from PC ---
   if (Serial.available() > 0) {
