@@ -5,7 +5,7 @@ const OBSWebSocket = require("obs-websocket-js").default;
 const { SerialPort, ReadlineParser } = require("serialport");
 
 const obs = new OBSWebSocket();
-const port = new SerialPort({ path: "COM5", baudRate: 9600 });
+const port = new SerialPort({ path: "COM3", baudRate: 9600 });
 const parser = port.pipe(new ReadlineParser({ delimiter: "\r\n" }));
 
 let mainWindow;
