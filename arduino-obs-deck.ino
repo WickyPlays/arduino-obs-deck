@@ -47,6 +47,11 @@ void loop() {
   int currentMuteButtonState = digitalRead(muteButtonPin);
   int currentSceneButtonState = digitalRead(sceneButtonPin);
 
+  if (currentRecordButtonState == 0) {
+  Serial.println(currentRecordButtonState);
+
+  }
+
   // --- Record button (pin 8) ---
   if (lastRecordButtonState == HIGH && currentRecordButtonState == LOW) {
     if ((millis() - lastRecordDebounceTime) > debounceDelay) {

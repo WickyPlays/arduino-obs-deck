@@ -32,7 +32,6 @@ parser.on("data", async (data) => {
   }
 
   if (data === "BTN-SFX") {
-    console.log("Button pressed → toggle media GG");
     try {
       await obs.call("TriggerMediaInputAction", {
         inputName: "GG",
@@ -42,14 +41,12 @@ parser.on("data", async (data) => {
         inputName: "GG",
         mediaAction: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART",
       });
-      console.log("Started GG");
     } catch (err) {
       console.error("Failed to toggle media source:", err);
     }
   }
 
   if (data === "BTN-MUTE") {
-    console.log("Button pressed → toggling mute");
     try {
       await obs.call("ToggleInputMute", { inputName: "Mic/Aux" });
     } catch (err) {
@@ -58,7 +55,6 @@ parser.on("data", async (data) => {
   }
 
   if (data === "BTN-SCENE") {
-    console.log("Button pressed → toggle scene");
     try {
       if (currentScene === "General") {
         await obs.call("SetCurrentProgramScene", { sceneName: "BRB" });
@@ -89,10 +85,8 @@ obs.on("RecordStateChanged", (data) => {
 obs.on("InputMuteStateChanged", (data) => {
   if (data.inputName === "Mic/Aux") {
     if (data.inputMuted) {
-      console.log("Mic muted → LED ON (pin 12)");
       port.write("2");
     } else {
-      console.log("Mic unmuted → LED OFF (pin 12)");
       port.write("3");
     }
   }
@@ -100,11 +94,9 @@ obs.on("InputMuteStateChanged", (data) => {
 
 obs.on("CurrentProgramSceneChanged", (data) => {
   if (data.sceneName === "General") {
-    console.log("Scene switched to General → LED pin 11 ON");
     currentScene = "General";
     port.write("4");
   } else if (data.sceneName === "BRB") {
-    console.log("Scene switched to BRB → LED pin 10 ON");
     currentScene = "BRB";
     port.write("5");
   }
