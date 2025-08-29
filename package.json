@@ -2,14 +2,16 @@
   "name": "arduino-obs-deck",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "electron-src/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron ./electron-src/main.js"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "electron": "^37.4.0",
     "obs-websocket-js": "^5.0.6",
     "serialport": "^13.0.0"
   }
