@@ -3,30 +3,239 @@
 <head>
   <meta charset="UTF-8">
   <title>OBS + Arduino Controller</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; background: #202020; color: #fff; }
-    .status { margin: 10px 0; font-size: 18px; }
-  </style>
+  <link href="main.css" rel="stylesheet">
 </head>
 <body>
-  <h1>OBS Controller</h1>
-  <div class="status" id="record">Record: OFF</div>
-  <div class="status" id="mute">Mic: Unmuted</div>
-  <div class="status" id="scene">Scene: </div>
-  <div class="status" id="pot">Pot: -- V</div>
+  <div id="loading" class="loading-overlay">
+    <div class="loader">
+      <h2>Connecting…</h2>
+      <p>Attempting to connect to OBS and serial device</p>
+    </div>
+  </div>
+
+  <div class="container" id="app" aria-hidden="true">
+    <header>
+      <h1>Stream Deck Arduino Controller</h1>
+      <h2>A project by Wicky</h2>
+      <hr />
+    </header>
+
+    <section class="topbar">
+      <div class="serial-controls">
+        <label for="portSelect">Serial Port</label>
+        <select id="portSelect"></select>
+        <button id="btnConnect">Connect</button>
+        <span id="serialState">Disconnected</span>
+      </div>
+
+      <div class="status-strip">
+        <div class="status-item"><span id="dot-record" class="dot dot-red off"></span><span>Recording</span></div>
+        <div class="status-item"><span id="dot-stream" class="dot dot-green off"></span><span>Streaming</span></div>
+        <div class="status-item"><span id="dot-mute" class="dot dot-blue off"></span><span>Mic</span></div>
+      </div>
+    </section>
+
+    <main class="main-grid">
+      <aside class="scene-pane">
+        <h3>Current Scene</h3>
+        <div id="sceneName" class="scene-name">—</div>
+        <div class="buttons-grid" id="sceneButtonsGrid">
+          <div class="btn-ind" id="sceneBtn1"><div class="btn-label">1</div></div>
+          <div class="btn-ind" id="sceneBtn2"><div class="btn-label">2</div></div>
+          <div class="btn-ind" id="sceneBtn3"><div class="btn-label">3</div></div>
+          <div class="btn-ind" id="sceneBtn4"><div class="btn-label">4</div></div>
+          <div class="btn-ind" id="sceneBtn5"><div class="btn-label">5</div></div>
+          <div class="btn-ind" id="sceneBtn6"><div class="btn-label">6</div></div>
+        </div>
+      </aside>
+
+      <section class="buttons-pane">
+        <h3>Buttons</h3>
+        <div class="buttons-grid" id="buttonsGrid">
+          <div class="btn-ind" id="btn1"><div class="btn-label">Record</div></div>
+          <div class="btn-ind" id="btn2"><div class="btn-label">Stream</div></div>
+          <div class="btn-ind" id="btn3"><div class="btn-label">Mute</div></div>
+          <div class="btn-ind" id="btn4"><div class="btn-label">SFX</div></div>
+          <div class="btn-ind" id="btn5"><div class="btn-label">A2</div></div>
+          <div class="btn-ind" id="btn6"><div class="btn-label">A3</div></div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div id="pot">Pot: -- V</div>
+      <div id="debug" class="debug"></div>
+    </footer>
+  </div>
+
   <script>
-    obsAPI.onRecord((active) => {
-      document.getElementById("record").textContent = "Record: " + (active ? "ON" : "OFF");
+    const loading = document.getElementById('loading');
+    const app = document.getElementById('app');
+    const portSelect = document.getElementById('portSelect');
+    const btnConnect = document.getElementById('btnConnect');
+    const serialStateSpan = document.getElementById('serialState');
+    const sceneNameDiv = document.getElementById('sceneName');
+    const potDiv = document.getElementById('pot');
+    const debugDiv = document.getElementById('debug');
+
+    const dotRecord = document.getElementById('dot-record');
+    const dotStream = document.getElementById('dot-stream');
+    const dotMute = document.getElementById('dot-mute');
+
+    const sceneBtnEls = [
+      document.getElementById('sceneBtn1'),
+      document.getElementById('sceneBtn2'),
+      document.getElementById('sceneBtn3'),
+      document.getElementById('sceneBtn4'),
+      document.getElementById('sceneBtn5'),
+      document.getElementById('sceneBtn6'),
+    ];
+
+    const controlBtnEls = [
+      document.getElementById('btn1'),
+      document.getElementById('btn2'),
+      document.getElementById('btn3'),
+      document.getElementById('btn4'),
+      document.getElementById('btn5'),
+      document.getElementById('btn6'),
+    ];
+
+    function showLoading(show) {
+      loading.style.display = show ? 'flex' : 'none';
+      app.setAttribute('aria-hidden', show ? 'true' : 'false');
+    }
+
+    showLoading(true);
+
+    let obsConnected = false;
+    let serialKnown = false;
+    window.obsAPI.onObsConnected((ok) => {
+      obsConnected = ok;
+      maybeHideLoading();
     });
-    obsAPI.onMute((muted) => {
-      document.getElementById("mute").textContent = "Mic: " + (muted ? "Muted" : "Unmuted");
+
+    window.obsAPI.onSerialOpen((open) => {
+      serialKnown = open;
+      serialStateSpan.textContent = open ? 'Connected' : 'Disconnected';
+      maybeHideLoading();
     });
-    obsAPI.onScene((scene) => {
-      document.getElementById("scene").textContent = "Scene: " + scene;
+
+    function maybeHideLoading() {
+      if (typeof obsConnected !== "undefined" && typeof serialKnown !== "undefined") {
+        setTimeout(() => showLoading(false), 600);
+      } else {
+        setTimeout(() => showLoading(false), 3000);
+      }
+    }
+
+    async function refreshPorts() {
+      const res = await window.obsAPI.listSerialPorts();
+      if (!res.ok) {
+        portSelect.innerHTML = `<option disabled>Error</option>`;
+        return;
+      }
+      const ports = res.ports;
+      portSelect.innerHTML = '';
+      ports.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.path;
+        opt.textContent = `${p.path}${p.manufacturer ? ' — ' + p.manufacturer : ''}`;
+        portSelect.appendChild(opt);
+      });
+      if (ports.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No ports found';
+        portSelect.appendChild(opt);
+      }
+    }
+
+    btnConnect.addEventListener('click', async () => {
+      const path = portSelect.value;
+      if (!path) return;
+      btnConnect.disabled = true;
+      btnConnect.textContent = 'Connecting...';
+      const r = await window.obsAPI.connectSerialPort(path);
+      await refreshPorts();
+      setTimeout(() => {
+        btnConnect.disabled = false;
+        btnConnect.textContent = 'Connect';
+      }, 800);
     });
-    obsAPI.onPot(({ voltage, volume }) => {
-      document.getElementById("pot").textContent = `Pot: ${voltage.toFixed(2)} V (Vol: ${(volume*100).toFixed(0)}%)`;
+
+    window.obsAPI.onSerialPorts((ports) => {
+      portSelect.innerHTML = '';
+      ports.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.path;
+        opt.textContent = `${p.path}${p.manufacturer ? ' — ' + p.manufacturer : ''}`;
+        portSelect.appendChild(opt);
+      });
     });
+
+    window.obsAPI.onRecord((active) => {
+      dotRecord.classList.toggle('on', active);
+      dotRecord.classList.toggle('off', !active);
+    });
+    window.obsAPI.onMute((muted) => {
+      dotMute.classList.toggle('on', !muted);
+      dotMute.classList.toggle('off', muted);
+    });
+    window.obsAPI.onStream((streaming) => {
+      dotStream.classList.toggle('on', streaming);
+      dotStream.classList.toggle('off', !streaming);
+    });
+    window.obsAPI.onScene((scene) => {
+      sceneNameDiv.textContent = scene;
+    });
+    window.obsAPI.onPot(({ voltage, volume }) => {
+      potDiv.textContent = `Pot: ${voltage.toFixed(2)} V (Vol: ${(volume*100).toFixed(0)}%)`;
+    });
+
+    window.obsAPI.onSerialData((line) => {
+      debugDiv.textContent = line;
+      const m = /^BTN-SCENE([1-6])$/.exec(line);
+      if (m) {
+        const i = parseInt(m[1],10) - 1;
+        flashButtonIndicator(sceneBtnEls[i]);
+      }
+      if (line === "BTN-SFX") {
+        flashButtonIndicator(controlBtnEls[3]);
+      }
+      if (line === "BTN-STREAM") {
+        flashButtonIndicator(controlBtnEls[1]);
+      }
+      if (line === "BTN-RECORD") {
+        flashButtonIndicator(controlBtnEls[0]);
+      }
+      if (line === "BTN-MUTE") {
+        flashButtonIndicator(controlBtnEls[2]);
+      }
+      if (line === "BTN-A2") {
+        flashButtonIndicator(controlBtnEls[4]);
+      }
+      if (line === "BTN-A3") {
+        flashButtonIndicator(controlBtnEls[5]);
+      }
+    });
+
+    function flashButtonIndicator(el) {
+      if (!el) return;
+      el.classList.add('pressed');
+      setTimeout(()=> el.classList.remove('pressed'), 250);
+    }
+
+    refreshPorts();
+
+    window.obsAPI.onSerialConnectResult((info) => {
+      if (info.ok) {
+        serialStateSpan.textContent = `Connected ${info.port || ''}`;
+      } else {
+        serialStateSpan.textContent = `Connect failed`;
+      }
+    });
+
+    setTimeout(()=> showLoading(false), 3500);
   </script>
 </body>
 </html>
