@@ -1,6 +1,5 @@
 #include "Matrix.h"
 
-// DIN = 51 (MOSI), CLK = 52 (SCK), CS = 3
 LedControl lc = LedControl(51, 52, 3, 1);
 
 // Local buffer

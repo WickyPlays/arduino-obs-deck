@@ -14,7 +14,6 @@ let currentSceneIndex = 0;
 
 let initialSynced = false;
 let obsConnectedFlag = false;
-let serialOpenFlag = false;
 
 function sendToSerial(line) {
   if (!serialPort || !serialPort.writable) return;
